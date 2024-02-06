@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+<script src="//static.deck16.net/headers/header.js"></script>
+<style>
+	html {
+		font-family: sans-serif;
+		background: silver;
+	}
+	
+	body {
+		margin: 0;
+	}
+	
+	aside.hidden, article.hidden {
+		display: none;
+	}
+	
+	main {
+		max-width: 1024px;
+		margin: 0 auto;
+	}
+	
+	article {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+	}
+	
+	article > div {
+		height: 150px;
+		width: 150px;
+		background-size: 110%;
+		background-position: center center;
+		background-repeat: no-repeat;
+		border: 10px solid #7f7f7f;
+		border-radius: 100%;
+		margin: 5px;
+		cursor: pointer;
+		text-align: center;
+		line-height: 130px;
+		font-size: 200px;
+		color: transparent;
+		overflow: hidden;
+		user-select: none;
+	}
+	
+	article > div.selected {
+		border: 10px solid lime;
+	}
+	
+	article > div.eliminated {
+		border: 10px solid red;
+		color: red;
+	}
+	
+	.ui-tooltip {
+		display: inline-block;		
+		background-color: yellow;
+		font-weight: bold;
+		padding: 5px;
+		border: 2px solid black;
+		box-shadow: none;
+	}
+	
+	input {
+		font-family: monospace;
+	}
+	
+	#header
+	{
+		background-image: url('https://static.deck16.net/headers/website_banner_192.jpg'); /* Default. Replaced by JS. */
+		background-position:right;
+		background-repeat:no-repeat;
+		background-color:black;
+		color:white;
+		font-weight: 900;
+		font-family: "Arial Black", Arial, sans-serif;			
+		height:150px;
+		padding-left:10px;
+	}
+	#header-tagline
+	{
+		font-size:18px;		
+	}
+	#header-title
+	{
+		font-size:32px;
+		font-variant:small-caps;		
+	}
+	#header-title a
+	{
+		color:white;	
+		text-decoration: none;	
+	}
+	
+	ol li b
+	{
+		background: #222;
+	}
+		
+	@media (prefers-color-scheme: dark) {
+		html {			
+			background: #222;
+			color: white;
+		}
+
+		a {
+			color: LightSkyBlue;
+		}
+		
+		a:visited {
+			color: Violet;
+		}
+	}
+</style>
+<script defer type="text/javascript">
+	
+	// Defaults:
+	var defaultCount = 20;
+	
+	// Where to find face image files. No trailing slash.
+	var facePath = "https://static.deck16.net/guess-who";
+	
+	// The selection of faces to use.
+	// faces[n][0] should contain the name of the person.
+	// faces[n][1] is an array of images to use.
+	var faces = [
+		["Aleankabut", ["al.png"]],
+		["Alexandros", ["alexandros.png"]],
+		["Aurene", ["aurene.webp"]],
+		["Avenius", ["avenius.webp"]],
+		["Cyrus", ["cyrus.png"]],
+		["Dorothea", ["dorothea.webp"]],
+		["Eurynomos", ["eury1.png","eury2.png","eury3.png","eury4.png"]],
+		["Ezekial Zarken", ["zeke.png"]],
+		["Farys Ferys the Felycitous", ["farys.png"]],
+		["Flutter", ["flutter.png"]],
+		["Garo", ["garo.png"]],
+		["Gwynivere", ["gwen.png"]],
+		["Kazan", ["kazan.png"]],
+		["Laila Akeldama", ["akeldama.png"]],
+		["Leo", ["leo.png"]],
+		["Longinus Redgreat", ["longinus.webp"]],
+		["Lukil", ["lukil1.png", "lukil2.png"]],
+		["Marlowe Dorrance", ["marlowe1.png","marlowe2.webp"]],
+		["Zilt", ["zilt1.png","zilt2.png"]],
+		["Myra", ["myra.png"]],
+		["Nim", ["nim.webp"]],
+		["Nireli", ["nireli1.png", "nireli2.png"]],
+		["Scarissa Exarian", ["scarissa1.png", "scarissa2.png", "scarissa3.png"]],
+		["Sebright \"Seb\" Orpington", ["sebright.png"]],
+		["Six", ["six.png"]],
+		["Surkiv", ["surkiv.png"]],
+		["Theodora", ["theodora.webp"]],
+		["Torkul", ["torkul.png"]],
+		["Tumbleclick", ["tumbleclick.png"]],
+		["Will o' Wisp", ["will.png"]],		
+		["Zenobia Exarian", ["zenobia1.png", "zenobia2.png", "zenobia3.png", "zenobia4.png", "zenobia5.png"]],
+		["Ziffinea Zarken", ["fin.png"]],
+	];
+
+	// Update the invite link:
+	function updatePreGameLink() {
+		var inviteLink = [location.protocol, '//', location.host, location.pathname].join('');
+		inviteLink += "?";
+		if($("#faces-count").val()) {
+			inviteLink += "count=" + $("#faces-count").val();
+		}
+		if($("#random-seed").val()) {
+			inviteLink += "&" + "seed=" + $("#random-seed").val();
+		}
+		$("#pre-game-link").val(inviteLink);
+		$("#pre-game-link").prop('href', inviteLink);		
+	}
+	
+	// https://stackoverflow.com/a/53758827
+	function shuffle(array, seed) {
+		var m = array.length, t, i;
+		while (m) {
+			i = Math.floor(random(seed) * m--);
+			t = array[m];
+			array[m] = array[i];
+			array[i] = t;
+			++seed;
+		}
+		return array;
+	}
+
+	// https://stackoverflow.com/a/53758827
+	function random(seed) {
+		var x = Math.sin(seed++) * 10000; 
+		return x - Math.floor(x);
+	}
+	
+	// https://stackoverflow.com/a/7616484
+	function hash(string) {
+		var hash = 0,
+		i, chr;
+		if (string.length === 0) return hash;
+		for (i = 0; i < string.length; i++) {
+			chr = string.charCodeAt(i);
+			hash = ((hash << 5) - hash) + chr;
+			hash |= 0; // Convert to 32bit integer
+		}
+		return hash;
+	}
+	
+	// The default seed.
+	function defaultSeed() {
+		return (Math.floor(Date.now() / 300)).toString().substr(4);
+	}
+	
+	$(document).ready(function(){
+	
+		// Update pre-game link when inputs are changed:
+		$("#random-seed, #faces-count").on( "change", function() {
+			updatePreGameLink();
+		});
+		
+		$("article").on( "click", "div", function() {			
+			if($(this).hasClass("eliminated")) {	
+				// Undo elimination:
+				$(this).removeClass("eliminated");
+			}
+			else if($(this).hasClass("selected")) {	
+				// Undo selection, but only if no eliminations picked yet:
+				if($("article > div.eliminated").length == 0) {				
+					$(this).removeClass("selected");
+				}
+			}
+			else if($("article > div.selected").length) {
+				// Something's already selected. So this is an elimination.
+				$(this).addClass("eliminated");
+			}
+			else {
+				// Nothing selected. So select this.
+				$(this).addClass("selected");
+			}			
+		});
+	
+		// Parse URL params, get defaults if they don't exist.
+		var urlParams = new URLSearchParams(window.location.search);
+		var seed = urlParams.get('seed');
+		var count = urlParams.get('count');
+		
+		// How to proceed depends on query strings:
+		if(!seed && !count) {
+			// Missing info. So show the pre-game screen:		
+			$("#random-seed").val(defaultSeed());
+			updatePreGameLink();
+			$("#instructions-no-query-string").show();			
+		}
+		else {
+			// Got info. So prepare main game screen:
+
+			// Default values if not set:
+			if(!seed) {
+				seed = defaultSeed();
+			}
+			if(!count) {
+				count = defaultCount;
+			}
+			
+			// Game link:
+			$('#game-link').val([location.protocol, '//', location.host, location.pathname, '?count=', count, '&seed=', seed].join(''));
+			
+			// Shuffle and truncate array of faces to get the master set.
+			// (Differnt players with the same seed get the same faces.)
+			shuffle(faces, seed);
+			if(count < faces.length) {
+				faces.length = count;
+			}
+			
+			// Now shuffle the master set with a non-shared seed.
+			// (Different players see the faces in random order.)
+			shuffle(faces, Math.floor(Math.random() * 10000));
+	
+			// Generate the HTML for the faces:
+			var facesHtml = "";
+			var faceIndex = 0;
+			faces.forEach(function (face, i) {
+				faceIndex = Math.floor(random(hash(face[0]) + seed) * face[1].length);
+				facesHtml += `<div style="background-image:url('${facePath}/${face[1][faceIndex]}'),linear-gradient(to bottom, #ccc, #333);" title="${face[0]}">&#10799;</div>`;						
+			});
+			$('article').append(facesHtml);
+			
+			// Show elements:
+			$("#instructions-query-string").show();
+			$("article").show();
+		}
+	});
+	
+	$( document ).tooltip({
+		track: true
+	});
+</script>
+<title>PC Guess Who</title>
+</head>
+<body>
+
+<header id="header">
+<span id="header-title"><a href="http://deck16.net">Deck16</a></span>
+<br>
+<span id="header-tagline">Player Character Guess Who</span>
+</header>
+<script type="text/javascript">	
+	// Set random header image:
+	document.querySelector('#header').style.backgroundImage = "url(https://static.deck16.net/headers/" + randomHeader + ")";
+</script>
+
+<main>
+<aside id="instructions-no-query-string" class="hidden">
+<p>Instructions:<p>
+<ol>
+	<li>How many characters should be used? <input id="faces-count" type=number value="20" size="6" /></li>
+	<li>Input a random seed, or keep the number in there now: <input id="random-seed" type=number value=""/></li>
+	<li>Click <a id="pre-game-link" href="">here</a> to generate a game!</li>		
+</ol>
+</aside>
+<aside id="instructions-query-string" class="hidden">
+<p>Instructions:<p>
+<ol>
+	<li>Invite others with this link: <input id="game-link" readonly size="60" /><br/>You'll have the same characters, but not necessarily in the same order.</li>
+	<li>Your first click will select or deselect the character you are playing. It will be marked <b style="color:lime;">GREEN</b>.</li>
+	<li>Subsequent clicks will mark or unmark characters as eliminated. These will be marked <b style="color:red;">RED</b>.</li>
+	<li>There's no special connection to other players or anything. This is all manual. So no cheating!</li>
+	<li>If you want to re-generate with the same parameters and same characters, <a href="">click here</a> or push <kbd>F5</kbd>.</li>
+	<li>If you want to re-generate with new parameters and new characters, <a href="?">click here</a>.</li>
+</ol>
+</aside>
+<article class="hidden">
+</article>
+</main>
+</body>
+</html>
