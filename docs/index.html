@@ -128,7 +128,12 @@
 	
 	// The selection of faces to use.
 	// faces[n][0] should contain the name of the person.
-	// faces[n][1] is an array of images to use.
+	//             See also "facePath" variable above.
+	// faces[n][1] is an array of images to use for that face.
+	//             If you only have one face, still put it in an array.
+	// Examples:
+	// ["Mr Smith", ["smith.png"]], // Someone with one face.
+	// ["Mr Green", ["green.png","green-at-awards.png","green-at-awards.png"]]], // Someone with one face.
 	var faces = [
 		["Aleankabut", ["al.png"]],
 		["Alexandros", ["alexandros.png"]],
