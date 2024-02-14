@@ -25,6 +25,17 @@
 		margin: 0 auto;
 	}
 	
+	h1 {
+		width: 100%;
+		text-align: center;
+		text-transform: uppercase;
+		
+	}
+	
+	div + h1 {
+		margin-top: 60px;		
+	}	
+	
 	article {
 		display: flex;
 		flex-wrap: wrap;
@@ -58,6 +69,15 @@
 		color: red;
 	}
 	
+	#players-choice {
+		margin: 0 calc(50% - 75px - 9.6px);
+		clear: both;
+		color: black;
+		cursor: initial;
+		font-size: 150px;
+		line-height: 1.03;
+	}
+	
 	.ui-tooltip {
 		display: inline-block;		
 		background-color: yellow;
@@ -65,6 +85,10 @@
 		padding: 5px;
 		border: 2px solid black;
 		box-shadow: none;
+	}
+	
+	table td:nth-child(2) {
+		padding-left: 20px;
 	}
 	
 	input {
@@ -176,6 +200,11 @@
 		if($("#faces-count").val()) {
 			inviteLink += "count=" + $("#faces-count").val();
 		}
+		if($("#shuffle").is(":checked")) {
+			inviteLink += "&shuffle=true";
+		} else {
+			inviteLink += "&shuffle=false";
+		}
 		if($("#random-seed").val()) {
 			inviteLink += "&" + "seed=" + $("#random-seed").val();
 		}
@@ -227,24 +256,16 @@
 			updatePreGameLink();
 		});
 		
-		$("article").on( "click", "div", function() {			
-			if($(this).hasClass("eliminated")) {	
-				// Undo elimination:
-				$(this).removeClass("eliminated");
-			}
-			else if($(this).hasClass("selected")) {	
-				// Undo selection, but only if no eliminations picked yet:
-				if($("article > div.eliminated").length == 0) {				
-					$(this).removeClass("selected");
-				}
-			}
-			else if($("article > div.selected").length) {
-				// Something's already selected. So this is an elimination.
-				$(this).addClass("eliminated");
-			}
-			else {
+		$("article").on( "click", "div:not(#players-choice)", function() {			
+			if($("#players-choice.selected").length) {
+				// Something's already selected. So this will be elimination-related:
+				$(this).toggleClass("eliminated");
+			} else {
 				// Nothing selected. So select this.
-				$(this).addClass("selected");
+				$("#players-choice").attr("title", $(this).attr("title")); 
+				$("#players-choice").attr("style", $(this).attr("style"));
+				$("#players-choice").html("");
+				$("#players-choice").addClass("selected");
 			}			
 		});
 	
@@ -252,6 +273,7 @@
 		var urlParams = new URLSearchParams(window.location.search);
 		var seed = urlParams.get('seed');
 		var count = urlParams.get('count');
+		var isShuffle = urlParams.get('shuffle') == 'true';
 		
 		// How to proceed depends on query strings:
 		if(!seed && !count) {
@@ -272,7 +294,7 @@
 			}
 			
 			// Game link:
-			$('#game-link').val([location.protocol, '//', location.host, location.pathname, '?count=', count, '&seed=', seed].join(''));
+			$('#game-link').val([location.protocol, '//', location.host, location.pathname, '?count=', count, '&shuffle=', isShuffle ? 'true' : 'false', '&seed=', seed].join(''));
 			
 			// Shuffle and truncate array of faces to get the master set.
 			// (Differnt players with the same seed get the same faces.)
@@ -281,13 +303,16 @@
 				faces.length = count;
 			}
 			
-			// Now shuffle the master set with a non-shared seed.
-			// (Different players see the faces in random order.)
-			shuffle(faces, Math.floor(Math.random() * 10000));
+			// If we are also shuffling per-player, then do that with a unique seed:
+			if(isShuffle) {
+				// Each player different order. So shuffle with unique seed.
+				shuffle(faces, Math.floor(Math.random() * 10000));
+			}
 	
-			// Generate the HTML for the faces:
 			var facesHtml = "";
 			var faceIndex = 0;
+			
+			// Generate the HTML for the faces:
 			faces.forEach(function (face, i) {
 				faceIndex = Math.floor(random(hash(face[0]) + seed) * face[1].length);
 				facesHtml += `<div style="background-image:url('${facePath}/${face[1][faceIndex]}'),linear-gradient(to bottom, #ccc, #333);" title="${face[0]}">&#10799;</div>`;						
@@ -320,25 +345,32 @@
 
 <main>
 <aside id="instructions-no-query-string" class="hidden">
-<p>Instructions:<p>
-<ol>
-	<li>How many characters should be used? <input id="faces-count" type=number value="20" size="6" /></li>
-	<li>Input a random seed, or keep the number in there now: <input id="random-seed" type=number value=""/></li>
-	<li>Click <a id="pre-game-link" href="">here</a> to generate a game!</li>		
-</ol>
+<table>
+<p></p>
+<tbody>
+<tr><td>Number of characters:</td><td><input id="faces-count" type="number" value="20" size="6" /></td></tr>
+<tr><td>Shuffle differently for each player:</td><td><input id="shuffle" type="checkbox"/></td></tr>
+<tr><td>Random seed:</td><td><input id="random-seed" type=number value=""/></td></tr>
+<tr><td colspan=2>&nbsp;</td></tr>
+<tr><td colspan=2><a id="pre-game-link">Generate Game</href></td></tr>
+</tbody>
+</table>
 </aside>
 <aside id="instructions-query-string" class="hidden">
 <p>Instructions:<p>
 <ol>
 	<li>Invite others with this link: <input id="game-link" readonly size="60" /><br/>You'll have the same characters, but not necessarily in the same order.</li>
-	<li>Your first click will select or deselect the character you are playing. It will be marked <b style="color:lime;">GREEN</b>.</li>
+	<li>Your first click will select or deselect your pick. It will be marked <b style="color:lime;">GREEN</b>.</li>
 	<li>Subsequent clicks will mark or unmark characters as eliminated. These will be marked <b style="color:red;">RED</b>.</li>
 	<li>There's no special connection to other players or anything. This is all manual. So no cheating!</li>
-	<li>If you want to re-generate with the same parameters and same characters, <a href="">click here</a> or push <kbd>F5</kbd>.</li>
-	<li>If you want to re-generate with new parameters and new characters, <a href="?">click here</a>.</li>
+	<li>If you want to re-generate with the <b>same</b> parameters and characters, <a href="">click here</a> or push <kbd>F5</kbd>.</li>
+	<li>If you want to re-generate with <b>new</b> parameters and characters, <a href="?">click here</a>.</li>
 </ol>
 </aside>
 <article class="hidden">
+<h1>Your Pick</h1>
+<div style="background-image:linear-gradient(to bottom, #ccc, #333);" title="Select from below" id="players-choice">?</div>
+<h1>All Characters</h1>
 </article>
 </main>
 </body>
